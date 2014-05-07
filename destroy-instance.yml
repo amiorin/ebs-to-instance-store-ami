@@ -1,0 +1,13 @@
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - variables.yml
+    - secrets.yml
+
+  tasks:
+    - name: destroy instance
+      ec2:
+        instance_ids: '{{ ec2.instance_ids }}'
+        region: '{{ region }}'
+        state: absent

@@ -1,0 +1,3 @@
+- include: launch-instance.yml
+- include: create-ami.yml
+- include: destroy-instance.yml

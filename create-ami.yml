@@ -1,0 +1,104 @@
+- hosts: ec2
+  vars_files:
+    - variables.yml
+    - secrets.yml
+
+  tasks:
+    - name: mount ephemeral drive
+      mount: name=/mnt src=/dev/xvdc fstype=ext3 state=mounted
+
+    - name: create temporary directory
+      file: >
+        path=/mnt/tmp
+        state=directory
+
+    - name: upload certificate
+      copy: >
+        content='{{ certificate }}'
+        dest=/mnt/tmp/cert.pem
+
+    - name: upload private key
+      copy: >
+        content='{{ private_key }}'
+        dest=/mnt/tmp/pk.pem
+        mode=600
+
+    - name: install packages
+      yum: name={{ item }}
+      with_items:
+        - ruby
+        - ntp
+        - grub
+
+    - name: clock sync
+      command: ntpdate pool.ntp.org
+      changed_when: false
+      ignore_errors: true
+
+    - name: enable ntpd
+      service: name=ntpd enabled=yes state=started
+
+    - name: "copy kernel, initramfs and grub.conf into canonical places"
+      shell: cp {{ item.src }} {{ item.dst }}
+      with_items:
+        - src: /boot/boot/vmlinuz-*
+          dst: /boot
+        - src: /boot/boot/initramfs-*.img
+          dst: /boot
+        - src: /boot/boot/grub/grub.conf
+          dst: /boot/grub/grub.conf
+
+    - name: download ec2-ami-tools
+      get_url: >
+        url=http://s3.amazonaws.com/ec2-downloads/{{ ec2_ami_tools }}.zip
+        dest=/mnt/tmp/{{ ec2_ami_tools }}.zip
+
+    - name: extract ec2-ami-tools
+      command: >
+        unzip {{ ec2_ami_tools }}.zip
+        chdir=/mnt/tmp
+        creates=/mnt/tmp/{{ ec2_ami_tools }}
+
+    - name: create AMI bundle directory
+      file: >
+        path=/mnt/ami
+        state=directory
+
+    - name: generate AMI bundle
+      environment:
+        EC2_AMITOOL_HOME: '/mnt/tmp/{{ ec2_ami_tools }}'
+      command: >
+        /mnt/tmp/{{ ec2_ami_tools }}/bin/ec2-bundle-vol
+          --user "{{ aws_account_number }}"
+          --privatekey /mnt/tmp/pk.pem
+          --cert /mnt/tmp/cert.pem
+          --arch {{ architecture }}
+          --prefix "{{ ami_name }}"
+          --destination /mnt/ami
+          --block-device-mapping {{ block_device_mapping }}
+          --partition mbr
+          --batch
+        creates=/mnt/ami/{{ ami_name }}
+
+    - name: upload AMI bundle
+      environment:
+        EC2_AMITOOL_HOME: '/mnt/tmp/{{ ec2_ami_tools }}'
+      command: >
+        /mnt/tmp/{{ ec2_ami_tools }}/bin/ec2-upload-bundle
+          --bucket "{{ s3_bucket }}"
+          --access-key "{{ aws_access_key }}"
+          --secret-key "{{ aws_secret_key }}"
+          --manifest "/mnt/ami/{{ ami_name }}.manifest.xml"
+          --acl public-read
+          --batch
+          --retry
+
+    - name: register AMI
+      local_action: >
+        command ec2-register {{ s3_bucket }}/{{ ami_name }}.manifest.xml
+          --name {{ ami_name }}
+          --virtualization-type {{ virtualization }}
+      register: ec2_register
+
+    - name: display AMI ID
+      debug: msg="{{ ec2_register.stdout }}"

@@ -1,0 +1,8 @@
+ami_name: centos-by-ansible-v4
+source_ami: ami-a29f7aca
+region: us-east-1
+instance_type: m3.medium
+ec2_ami_tools: ec2-ami-tools-1.5.2
+architecture: x86_64
+virtualization: hvm
+block_device_mapping: 'ami=sda,root=/dev/sda1,ephemeral0=sdb,ephemeral1=sdc,ephemeral2=sdd,ephemeral3=sde'
