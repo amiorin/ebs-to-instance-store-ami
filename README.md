@@ -113,4 +113,3 @@ Known issues
 
 1. You have to manually increment version number in `ami_name` variable.
 2. AMI ID output is not pretty.
-3. Host EBS volumes are not destroyed with host instance. You have to destroy them manually.

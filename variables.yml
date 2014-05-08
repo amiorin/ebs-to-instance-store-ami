@@ -1,5 +1,16 @@
-ami_name: centos-by-ansible-v4
+ami_name: centos-by-ansible-v5
 source_ami: ami-a29f7aca
+source_volumes:
+  - device_name: /dev/sda1
+    snapshot: snap-c9a6e916
+    volume_size: 1
+    delete_on_termination: true
+  - device_name: /dev/sdb
+    snapshot: snap-84a3ec5b
+    volume_size: 2
+    delete_on_termination: true
+  - device_name: /dev/sdc
+    ephemeral: ephemeral0
 region: us-east-1
 instance_type: m3.medium
 ec2_ami_tools: ec2-ami-tools-1.5.2
