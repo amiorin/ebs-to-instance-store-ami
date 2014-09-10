@@ -1,3 +1,6 @@
+Warning: this repository is obsolete!
+-------------------------------------
+
 ebs-to-instance-store-ami
 =========================
 
